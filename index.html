@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>筛选器</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .filter-container {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+
+      .digit-input {
+        flex: 1;
+        height: 40px;
+        text-align: center;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      #results {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 5px;
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+
+      .number-item {
+        padding: 5px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 3px;
+        text-align: center;
+        font-family: monospace;
+      }
+
+      input[type="text"] {
+        inputmode: numeric;
+      }
+
+      @media (max-width: 480px) {
+        .digit-input {
+          width: 15%;
+          min-width: 50px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>数字筛选器</h1>
+
+    <div class="filter-container">
+      <input
+        type="text"
+        class="digit-input"
+        data-index="0"
+        placeholder="万位"
+        pattern="[0-9]*"
+      />
+      <input
+        type="text"
+        class="digit-input"
+        data-index="1"
+        placeholder="千位"
+        pattern="[0-9]*"
+      />
+      <input
+        type="text"
+        class="digit-input"
+        data-index="2"
+        placeholder="百位"
+        pattern="[0-9]*"
+      />
+      <input
+        type="text"
+        class="digit-input"
+        data-index="3"
+        placeholder="十位"
+        pattern="[0-9]*"
+      />
+      <input
+        type="text"
+        class="digit-input"
+        data-index="4"
+        placeholder="个位"
+        pattern="[0-9]*"
+      />
+    </div>
+
+    <div class="button-group">
+      <button id="filterBtn">筛选</button>
+      <button id="excludeBtn">排除</button>
+      <button id="clearBtn">重置</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+      // 生成所有数字（00000-99999）
+      const allNumbers = Array.from({ length: 100000 }, (_, i) =>
+        i.toString().padStart(5, "0")
+      );
+
+      // 优化输入处理
+      document.querySelectorAll(".digit-input").forEach((input) => {
+        input.addEventListener("input", function () {
+          // 只保留数字并去重
+          const digits = [
+            ...new Set(this.value.replace(/[^0-9]/g, "").split("")),
+          ];
+          this.value = digits.join("");
+        });
+      });
+
+      // 增强筛选功能
+      function filterNumbers(isExclude = false) {
+        // 获取所有筛选条件（已去重的数字数组）
+        const filters = Array.from(
+          document.querySelectorAll(".digit-input")
+        ).map((input) => [...new Set(input.value.split(""))]);
+
+        const filtered = allNumbers.filter((num) => {
+          return num.split("").every((digit, index) => {
+            const conditionDigits = filters[index];
+
+            // 空条件直接通过
+            if (conditionDigits.length === 0) return true;
+
+            // 判断包含关系
+            const isMatch = conditionDigits.includes(digit);
+            return isExclude ? !isMatch : isMatch;
+          });
+        });
+
+        updateResults(filtered);
+      }
+
+      // 高效更新结果
+      function updateResults(numbers) {
+        const container = document.getElementById("results");
+        const fragment = document.createDocumentFragment();
+
+        // 分批渲染优化性能
+        const batchSize = 500;
+        let processed = 0;
+
+        function processBatch() {
+          const end = Math.min(processed + batchSize, numbers.length);
+          for (; processed < end; processed++) {
+            const div = document.createElement("div");
+            div.className = "number-item";
+            div.textContent = numbers[processed];
+            fragment.appendChild(div);
+          }
+
+          if (processed < numbers.length) {
+            requestAnimationFrame(processBatch);
+          } else {
+            container.innerHTML = "";
+            container.appendChild(fragment);
+          }
+        }
+
+        processBatch();
+      }
+
+      // 清空功能
+      function clearFilters() {
+        document
+          .querySelectorAll(".digit-input")
+          .forEach((input) => (input.value = ""));
+        updateResults(allNumbers);
+      }
+      // 事件绑定
+      document
+        .getElementById("filterBtn")
+        .addEventListener("click", () => filterNumbers());
+      document
+        .getElementById("excludeBtn")
+        .addEventListener("click", () => filterNumbers(true));
+      document
+        .getElementById("clearBtn")
+        .addEventListener("click", clearFilters);
+
+      // 初始加载
+      updateResults(allNumbers);
+      setTimeout(() => {
+        filterNumbers();
+      }, 0);
+    </script>
+  </body>
+</html>
